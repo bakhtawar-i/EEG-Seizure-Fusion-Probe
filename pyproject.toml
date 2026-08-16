@@ -1,0 +1,25 @@
+[project]
+name = "eeg-seizure-fusion-probe"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.43.72",
+    "fastapi>=0.141.1",
+    "mne>=1.12.1",
+    "numpy>=2.5.2",
+    "pandas>=3.0.5",
+    "python-dotenv>=1.2.2",
+    "scikit-learn>=1.9.0",
+    "torch>=2.13.0",
+    "torchvision>=0.28.0",
+    "uvicorn>=0.52.3",
+]
+
+[project.scripts]
+eeg-seizure-fusion-probe = "eeg_seizure_fusion_probe:main"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"

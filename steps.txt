@@ -1,0 +1,92 @@
+****************************************************************************
+PHASE 0 — ENVIRONMENT SETUP 
+****************************************************************************
+
+1. WSL2 Ubuntu, uv init, single .venv
+
+2. Core deps: MNE-Python (EEG processing), PyTorch, boto3, python-dotenv, FastAPI
+---> uv init
+---> uv add mne torch torchvision numpy pandas scikit-learn boto3 python-dotenv fastapi uvicorn
+
+3. S3 bucket setup for raw + processed data
+---> create S3 bucket
+---> create IAM user
+
+4. Repo skeleton: data/, models/, notebooks/, api/, scripts/
+
+-> check sanity before moving on to Phase 1
+uv run python -c "
+import os, boto3
+from dotenv import load_dotenv
+load_dotenv()
+s3 = boto3.client('s3', region_name=os.environ['AWS_DEFAULT_REGION'])
+resp = s3.list_objects_v2(Bucket=os.environ['S3_BUCKET_NAME'])
+print('Connected. Objects in bucket:', [o['Key'] for o in resp.get('Contents', [])])
+"
+---> should show Connected. Objects in bucket: []
+
+****************************************************************************
+PHASE 1 — DATA PIPELINE (CHB-MIT)
+****************************************************************************
+
+-> Download CHB-MIT (open access, no credentialing)
+-> Preprocessing: bandpass filter, windowing/segmentation, seizure vs. non-seizure labeling
+-> Push processed windows to S3
+-> Sanity-check class balance, patient-level train/test split (avoid patient leakage)
+
+******************************************************************************
+PHASE 2 — BASELINE MODEL (CHB-MIT)
+******************************************************************************
+
+-> Simple baseline: CNN or gradient-boosted-tree on hand-crafted features
+-> Train/eval, report sensitivity + false-alarm rate against published CHB-MIT numbers
+-> Milestone: first real accuracy number
+
+********************************************************************************
+PHASE 3 — FOUNDATION MODEL (CHB-MIT)
+********************************************************************************
+
+-> Fine-tune pretrained EEG foundation model (LaBraM, or BENDR as fallback) on same task
+-> Compare against Phase 2 baseline — does the foundation model actually outperform, or does it underperform like EEG-Bench found on sleep staging?
+-> Milestone: headline comparison result
+
+**********************************************************************************
+PHASE 4 — METADATA FUSION
+**********************************************************************************
+
+-> Add available patient metadata (age, seizure history if present in CHB-MIT docs)
+-> Naive fusion baseline (concatenation)
+-> Diagnostic: ablate metadata, check if predictions/confidence actually shift — your signature failure-mode analysis
+-> Milestone: fusion-failure diagnostic result #1
+
+**********************************************************************************
+PHASE 5 — SCALE TO TUAB
+**********************************************************************************
+
+-> Same pipeline (Phases 1–4) applied to TUAB (abnormal classification) or TUEV
+-> Requires separate access request (TUH corpus registration — check turnaround time early)
+-> Gives you a second, larger-scale result and a generalization angle: does the fusion-failure pattern from CHB-MIT hold on a different dataset/task?
+-> Milestone: cross-dataset comparison — this is your strongest differentiator
+
+***********************************************************************************
+PHASE 6 — CALIBRATION  LAYER
+***********************************************************************************
+
+-> Confidence calibration audit across both datasets: does model confidence track actual reliability, or is it miscalibrated the way your prior projects found?
+-> Reliability diagrams / ECE (expected calibration error) as a concrete metric to report
+
+************************************************************************************
+PHASE 7 — FastAPI + Demo UI
+************************************************************************************
+
+-> FastAPI endpoint: input EEG window → prediction + confidence + fusion-diagnostic flag
+-> Lightweight frontend (Streamlit or simple static page) for interactive demo
+-> Deploy on EC2/Fargate if you want it live for portfolio/outreach links
+
+************************************************************************************
+Phase 8 — Writeup + Portfolio Integration
+************************************************************************************
+
+Research-note style summary (Problem / Tested / Why it matters, matching your other cards)
+Slot into portfolio "Built" carousel alongside vla-grounding-probe
+Extract a one-paragraph hook usable in cold emails to PIs (accuracy number + diagnostic finding)

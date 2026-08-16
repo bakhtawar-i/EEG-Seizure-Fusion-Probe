@@ -1,0 +1,7 @@
+.venv/
+.env
+data/raw/
+data/processed/
+*.edf
+__pycache__/
+*.pyc
