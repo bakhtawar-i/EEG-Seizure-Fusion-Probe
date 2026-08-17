@@ -29,10 +29,37 @@ print('Connected. Objects in bucket:', [o['Key'] for o in resp.get('Contents', [
 PHASE 1 — DATA PIPELINE (CHB-MIT)
 ****************************************************************************
 
--> Download CHB-MIT (open access, no credentialing)
--> Preprocessing: bandpass filter, windowing/segmentation, seizure vs. non-seizure labeling
--> Push processed windows to S3
--> Sanity-check class balance, patient-level train/test split (avoid patient leakage)
+1. Download CHB-MIT (open access, no credentialing)
+
+mkdir -p data/raw/chbmit
+cd data/raw/chbmit
+wget -r -N -c -np -nH --cut-dirs=3 https://physionet.org/files/chbmit/1.0.0/chb01/
+
+---> chb02, chb03... for next patient
+
+-> scripts/00_inspect_edf.py 
+--> check the structure of an .edf file before writing the pipeline code 
+
+-> scripts/01_parse_summary.py
+--> run it for patients 1, 2 and 3
+
+2. Preprocessing: bandpass filter, windowing/segmentation, seizure vs. non-seizure labeling
+
+-> scripts/02_preprocess_patient.py 
+---> Bandpass filter - Standard range for seizure detection work — removes slow drift and high-frequency noise/muscle artifact.
+---> Window/segment - Split each recording into fixed-length windows (commonly 2–4 seconds, with or without overlap — start with non-overlapping 4s windows for simplicity). 
+For each window, label it seizure=1 if it overlaps a labeled seizure interval, else 0. 
+Expect heavy class imbalance (seizures are rare) — note the ratio, we need it for Phase 2 (class weighting or resampling).
+
+---> Patient-level train/test split — split by patient ID, not by window. E.g. patients 1–17 train, 18–22 test (or similar). 
+Windows from the same patient in both train and test will leak information and inflate accuracy.
+
+---> Save processed windows
+
+3. Push processed windows to S3
+4. Sanity-check class balance, patient-level train/test split (avoid patient leakage)
+
+-> downloading patient data for patients 4-18
 
 ******************************************************************************
 PHASE 2 — BASELINE MODEL (CHB-MIT)
