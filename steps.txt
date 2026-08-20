@@ -61,6 +61,16 @@ Windows from the same patient in both train and test will leak information and i
 
 -> downloading patient data for patients 4-18
 
+cd data/raw/chbmit
+
+for i in $(seq -w 4 18); do
+  patient="chb${i}"
+  echo "Downloading ${patient}..."
+  wget -r -N -c -np -nH --cut-dirs=3 "https://physionet.org/files/chbmit/1.0.0/${patient}/"
+done
+
+cd ../../..
+
 ******************************************************************************
 PHASE 2 — BASELINE MODEL (CHB-MIT)
 ******************************************************************************
