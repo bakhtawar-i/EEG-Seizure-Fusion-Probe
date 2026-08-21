@@ -15,9 +15,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-WINDOW_SEC = 4
-SFREQ = 256
-WINDOW_SAMPLES = WINDOW_SEC * SFREQ
+# WINDOW_SEC = 4
+# SFREQ = 256
+# WINDOW_SAMPLES = WINDOW_SEC * SFREQ
 
 # Canonical 22 unique channels from chb01's header, duplicate T8-P8 removed.
 # NOTE: verify this list matches chb02/chb03 exactly before trusting it blindly —
@@ -28,36 +28,64 @@ CANONICAL_CHANNELS = [
     "FZ-CZ", "CZ-PZ", "P7-T7", "T7-FT9", "FT9-FT10", "FT10-T8",
 ]
 
+WINDOW_SEC = 2
+SFREQ = 256
+WINDOW_SAMPLES = WINDOW_SEC * SFREQ
+SEIZURE_STRIDE_SEC = 1       # overlapping stride within seizure regions
+SEIZURE_MARGIN_SEC = 2       # extra context around each seizure interval
 
-# def load_and_filter(edf_path: str) -> mne.io.Raw:
-#     raw = mne.io.read_raw_edf(edf_path, preload=True, verbose=False)
 
-#     # MNE appends -0/-1 to duplicate channel names (e.g. T8-P8 -> T8-P8-0, T8-P8-1).
-#     # Strip suffixes and drop the resulting duplicate, keeping the first occurrence.
-#     rename_map = {}
-#     for ch in raw.ch_names:
-#         stripped = ch.rsplit("-0", 1)[0] if ch.endswith("-0") else ch
-#         stripped = stripped.rsplit("-1", 1)[0] if ch.endswith("-1") else stripped
-#         rename_map[ch] = stripped
-#     raw.rename_channels(rename_map, allow_duplicate_names=True)
+def window_and_label(raw: mne.io.Raw, seizure_rows: pd.DataFrame):
+    data = raw.get_data()  # shape: (n_channels, n_samples)
+    n_samples = data.shape[1]
 
-#     # Drop any now-duplicate channels, keep first
-#     seen = set()
-#     drop = []
-#     for ch in raw.ch_names:
-#         if ch in seen:
-#             drop.append(ch)
-#         seen.add(ch)
-#     if drop:
-#         raw.drop_channels(drop)
+    seizure_intervals = [
+        (row["seizure_start_sec"], row["seizure_end_sec"])
+        for _, row in seizure_rows.iterrows()
+        if not pd.isna(row["seizure_start_sec"])
+    ]
 
-#     missing = [c for c in CANONICAL_CHANNELS if c not in raw.ch_names]
-#     if missing:
-#         raise ValueError(f"{edf_path} missing expected channels: {missing}")
+    def label_for(start_sec, end_sec):
+        for s_start, s_end in seizure_intervals:
+            if start_sec < s_end and end_sec > s_start:
+                return 1
+        return 0
 
-#     raw.pick(CANONICAL_CHANNELS)  # also reorders to match canonical order
-#     raw.filter(l_freq=0.5, h_freq=40.0, verbose=False)
-#     return raw
+    window_starts = set()
+
+    # Pass 1: non-overlapping sweep across the full recording (negatives + sparse positives)
+    n_full_windows = n_samples // WINDOW_SAMPLES
+    for i in range(n_full_windows):
+        start_sample = i * WINDOW_SAMPLES
+        window_starts.add(start_sample)
+
+    # Pass 2: overlapping sweep restricted to seizure intervals (+ margin), 1s stride
+    stride_samples = SEIZURE_STRIDE_SEC * SFREQ
+    for s_start, s_end in seizure_intervals:
+        region_start_sec = max(0, s_start - SEIZURE_MARGIN_SEC)
+        region_end_sec = min(n_samples / SFREQ, s_end + SEIZURE_MARGIN_SEC)
+        region_start_sample = int(region_start_sec * SFREQ)
+        region_end_sample = int(region_end_sec * SFREQ) - WINDOW_SAMPLES
+
+        start = region_start_sample
+        while start <= region_end_sample:
+            window_starts.add(start)
+            start += stride_samples
+
+    windows = []
+    labels = []
+    for start_sample in sorted(window_starts):
+        end_sample = start_sample + WINDOW_SAMPLES
+        if end_sample > n_samples:
+            continue
+        start_sec = start_sample / SFREQ
+        end_sec = end_sample / SFREQ
+        label = label_for(start_sec, end_sec)
+
+        windows.append(data[:, start_sample:end_sample])
+        labels.append(label)
+
+    return np.array(windows, dtype=np.float32), np.array(labels, dtype=np.int64)
 
 def load_and_filter(edf_path: str) -> mne.io.Raw:
     raw = mne.io.read_raw_edf(edf_path, preload=True, verbose=False)
@@ -91,32 +119,32 @@ def load_and_filter(edf_path: str) -> mne.io.Raw:
     return raw
 
 
-def window_and_label(raw: mne.io.Raw, seizure_rows: pd.DataFrame):
-    data = raw.get_data()  # shape: (n_channels, n_samples)
-    n_samples = data.shape[1]
-    n_windows = n_samples // WINDOW_SAMPLES
+# def window_and_label(raw: mne.io.Raw, seizure_rows: pd.DataFrame):
+#     data = raw.get_data()  # shape: (n_channels, n_samples)
+#     n_samples = data.shape[1]
+#     n_windows = n_samples // WINDOW_SAMPLES
 
-    windows = []
-    labels = []
-    for i in range(n_windows):
-        start_sample = i * WINDOW_SAMPLES
-        end_sample = start_sample + WINDOW_SAMPLES
-        start_sec = start_sample / SFREQ
-        end_sec = end_sample / SFREQ
+#     windows = []
+#     labels = []
+#     for i in range(n_windows):
+#         start_sample = i * WINDOW_SAMPLES
+#         end_sample = start_sample + WINDOW_SAMPLES
+#         start_sec = start_sample / SFREQ
+#         end_sec = end_sample / SFREQ
 
-        label = 0
-        for _, row in seizure_rows.iterrows():
-            if pd.isna(row["seizure_start_sec"]):
-                continue
-            # window overlaps a labeled seizure interval
-            if start_sec < row["seizure_end_sec"] and end_sec > row["seizure_start_sec"]:
-                label = 1
-                break
+#         label = 0
+#         for _, row in seizure_rows.iterrows():
+#             if pd.isna(row["seizure_start_sec"]):
+#                 continue
+#             # window overlaps a labeled seizure interval
+#             if start_sec < row["seizure_end_sec"] and end_sec > row["seizure_start_sec"]:
+#                 label = 1
+#                 break
 
-        windows.append(data[:, start_sample:end_sample])
-        labels.append(label)
+#         windows.append(data[:, start_sample:end_sample])
+#         labels.append(label)
 
-    return np.array(windows, dtype=np.float32), np.array(labels, dtype=np.int64)
+#     return np.array(windows, dtype=np.float32), np.array(labels, dtype=np.int64)
 
 
 def process_patient(patient_id: str):
@@ -145,21 +173,20 @@ def process_patient(patient_id: str):
     X = np.concatenate(all_windows, axis=0)
     y = np.concatenate(all_labels, axis=0)
 
+    X = X.astype(np.float16)  # halves file size
+
     print(f"\n{patient_id} totals: {X.shape[0]} windows, {y.sum()} seizure ({y.mean()*100:.2f}%)")
 
     out_dir = "data/processed/windows"
     os.makedirs(out_dir, exist_ok=True)
-    x_path = os.path.join(out_dir, f"{patient_id}_X.npy")
-    y_path = os.path.join(out_dir, f"{patient_id}_y.npy")
-    np.save(x_path, X)
-    np.save(y_path, y)
-    print(f"Saved locally to {x_path}, {y_path}")
+    x_path = os.path.join(out_dir, f"{patient_id}_X.npz")
+    np.savez_compressed(x_path, X=X, y=y)
+    print(f"Saved locally to {x_path}")
 
     s3 = boto3.client("s3", region_name=os.environ["AWS_DEFAULT_REGION"])
     bucket = os.environ["S3_BUCKET_NAME"]
-    s3.upload_file(x_path, bucket, f"processed/windows/{patient_id}_X.npy")
-    s3.upload_file(y_path, bucket, f"processed/windows/{patient_id}_y.npy")
-    print(f"Uploaded to s3://{bucket}/processed/windows/{patient_id}_X.npy (+ _y.npy)")
+    s3.upload_file(x_path, bucket, f"processed/windows/{patient_id}.npz")
+    print(f"Uploaded to s3://{bucket}/processed/windows/{patient_id}.npz")
 
 
 if __name__ == "__main__":

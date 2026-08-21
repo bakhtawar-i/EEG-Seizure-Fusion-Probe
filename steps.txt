@@ -47,7 +47,7 @@ wget -r -N -c -np -nH --cut-dirs=3 https://physionet.org/files/chbmit/1.0.0/chb0
 
 -> scripts/02_preprocess_patient.py 
 ---> Bandpass filter - Standard range for seizure detection work — removes slow drift and high-frequency noise/muscle artifact.
----> Window/segment - Split each recording into fixed-length windows (commonly 2–4 seconds, with or without overlap — start with non-overlapping 4s windows for simplicity). 
+---> Window/segment - Split each recording into fixed-length windows; using 2 seconds + 0% overlap (1s stride) just for the positive/seizure regions — but keep non-overlapping windows for the negative/background regions, otherwise your negative class balloons even further and training gets slower for no benefit. 
 For each window, label it seizure=1 if it overlaps a labeled seizure interval, else 0. 
 Expect heavy class imbalance (seizures are rare) — note the ratio, we need it for Phase 2 (class weighting or resampling).
 
@@ -55,9 +55,6 @@ Expect heavy class imbalance (seizures are rare) — note the ratio, we need it 
 Windows from the same patient in both train and test will leak information and inflate accuracy.
 
 ---> Save processed windows
-
-3. Push processed windows to S3
-4. Sanity-check class balance, patient-level train/test split (avoid patient leakage)
 
 -> downloading patient data for patients 4-18
 
@@ -70,6 +67,35 @@ for i in $(seq -w 4 18); do
 done
 
 cd ../../..
+
+-> then run the script/02 for all patients
+---> upload takes a long time so shifting to EC2
+
+-> 1. create EC2 instance
+
+-> 2. create IAM role
+--> save .pem file
+---> mkdir -p ~/.ssh
+---> mv "/mnt/d/Downloads/eeg-seizure-fusion-probe-key.pem" ~/.ssh/
+---> chmod 400 ~/.ssh/eeg-seizure-fusion-probe-key.pem
+
+-> 3. Connect to the instance using the public IPv4 key
+---> ssh -i ~/.ssh/eeg-seizure-fusion-probe-key.pem ubuntu@<instance-public-ip>
+
+-> 4. Set up the environment 
+---> sudo apt update && sudo apt install -y python3-pip git
+---> curl -LsSf https://astral.sh/uv/install.sh | sh
+---> source $HOME/.local/bin/env
+---> git clone <your-repo-url>
+---> cd EEG-Seizure-Fusion-Probe
+---> uv sync
+
+-> 5. Copy data directly from WSL to EC2 via scp
+---> scp -i ~/.ssh/eeg-seizure-fusion-probe-key.pem -r data/raw/chbmit/chb0[4-9] data/raw/chbmit/chb1[0-8] ubuntu@34.204.53.60:~/eeg-seizure-fusion-probe/data/raw/chbmit/
+
+3. Push processed windows to S3
+4. Sanity-check class balance, patient-level train/test split (avoid patient leakage)
+
 
 ******************************************************************************
 PHASE 2 — BASELINE MODEL (CHB-MIT)
