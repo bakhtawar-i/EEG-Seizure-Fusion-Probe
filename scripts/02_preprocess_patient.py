@@ -4,7 +4,7 @@ Memory-safe version — writes windows directly to a disk-backed array per file,
 never holds the full patient's data in RAM at once.
 
 Usage:
-    uv run python scripts/preprocess_patient.py chb01
+    uv run python scripts/02_preprocess_patient.py chb01
 """
 import os
 import sys
@@ -23,14 +23,19 @@ SFREQ = 256
 WINDOW_SAMPLES = WINDOW_SEC * SFREQ
 SEIZURE_STRIDE_SEC = 1
 SEIZURE_MARGIN_SEC = 2
-N_CHANNELS = 22
+N_CHANNELS = 18
+
+# CANONICAL_CHANNELS = [
+#     "FP1-F7", "F7-T7", "T7-P7", "P7-O1", "FP1-F3", "F3-C3", "C3-P3", "P3-O1",
+#     "FP2-F4", "F4-C4", "C4-P4", "P4-O2", "FP2-F8", "F8-T8", "T8-P8", "P8-O2",
+#     "FZ-CZ", "CZ-PZ", "P7-T7", "T7-FT9", "FT9-FT10", "FT10-T8",
+# ]
 
 CANONICAL_CHANNELS = [
     "FP1-F7", "F7-T7", "T7-P7", "P7-O1", "FP1-F3", "F3-C3", "C3-P3", "P3-O1",
     "FP2-F4", "F4-C4", "C4-P4", "P4-O2", "FP2-F8", "F8-T8", "T8-P8", "P8-O2",
-    "FZ-CZ", "CZ-PZ", "P7-T7", "T7-FT9", "FT9-FT10", "FT10-T8",
+    "FZ-CZ", "CZ-PZ",
 ]
-
 
 def clean_channels(raw: mne.io.Raw) -> mne.io.Raw:
     seen_stripped = set()
