@@ -151,6 +151,32 @@ print('Labels shape:', y.shape)
 print('Seizure windows:', y.sum(), f'({y.mean()*100:.2f}%)')
 "
 
+-> 3. Train baseline model - using light GBM
+---> uv add lightgbm scikit-learn
+---> scripts/04_train_baseline.py 
+
+=== Results ===
+AUC-ROC: 0.8696
+AUC-PR: 0.1501
+Sensitivity (recall): 0.3090
+Precision: 0.0698
+False alarms/hour: 38.07
+Confusion matrix: TN=163728, FP=3556, FN=597, TP=267
+
+---> What's working: AUC-ROC of 0.87 says the model can rank seizure windows above non-seizure windows reasonably well overall, the features (band power, variance, line length) are capturing real signal.
+
+---> What's not working, and why it matters more here: AUC-PR of 0.15 and sensitivity of 0.31 are the real story given this task. 
+Only catching 31% of actual seizure windows — missing roughly 2 out of every 3. 
+And 38 false alarms per hour is clinically unusable — for context, published CHB-MIT seizure detection work typically targets single-digit false alarms per hour; 38/hr means the model flags something almost every 90 seconds, which no clinician would tolerate.
+
+---> Why the gap between AUC-ROC and AUC-PR is so large: this is exactly what severe class imbalance does — ROC-AUC is measuring against a huge pool of true negatives, so it looks good almost by default, 
+while AUC-PR (which only cares about positive-class performance) exposes that the model is still struggling with the actual seizure-detection task. 
+
+-> 4. rerun the script using different methods to account for class imbalance
+---> 1. threshold sweep - doesnt require retraining
+ 
+
+
 
 
 

@@ -95,3 +95,38 @@ print(f"Sensitivity (recall): {sensitivity:.4f}")
 print(f"Precision: {precision:.4f}")
 print(f"False alarms/hour: {fa_per_hour:.2f}")
 print(f"Confusion matrix: TN={tn}, FP={fp}, FN={fn}, TP={tp}")
+
+
+# *** OUTPUT ***
+
+# === Results ===
+# AUC-ROC: 0.8696
+# AUC-PR: 0.1501
+# Sensitivity (recall): 0.3090
+# Precision: 0.0698
+# False alarms/hour: 38.07
+# Confusion matrix: TN=163728, FP=3556, FN=597, TP=267
+
+"""
+Threshold sweep on the already-trained baseline model's predictions.
+Run this after train_baseline.py has produced y_pred_proba for the test set.
+"""
+import numpy as np
+from sklearn.metrics import recall_score, precision_score, confusion_matrix
+
+# Assumes y_test and y_pred_proba are available — either rerun training inline
+# or save/load them. Simplest: just append this to train_baseline.py after
+# the existing evaluation block, reusing y_test and y_pred_proba directly.
+
+thresholds = np.arange(0.05, 0.95, 0.05)
+window_sec = 2
+
+print(f"{'Threshold':>10} {'Sensitivity':>12} {'Precision':>10} {'FA/hour':>10} {'TP':>6} {'FP':>6} {'FN':>6}")
+for t in thresholds:
+    y_pred_t = (y_pred_proba >= t).astype(int)
+    sens = recall_score(y_test, y_pred_t, zero_division=0)
+    prec = precision_score(y_test, y_pred_t, zero_division=0)
+    tn, fp, fn, tp = confusion_matrix(y_test, y_pred_t).ravel()
+    total_hours = (len(y_test) * window_sec) / 3600
+    fa_per_hour = fp / total_hours
+    print(f"{t:>10.2f} {sens:>12.4f} {prec:>10.4f} {fa_per_hour:>10.2f} {tp:>6} {fp:>6} {fn:>6}")
