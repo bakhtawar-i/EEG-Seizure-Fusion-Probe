@@ -110,9 +110,37 @@ cd ../../..
 PHASE 2 — BASELINE MODEL (CHB-MIT)
 ******************************************************************************
 
--> Simple baseline: CNN or gradient-boosted-tree on hand-crafted features
--> Train/eval, report sensitivity + false-alarm rate against published CHB-MIT numbers
--> Milestone: first real accuracy number
+1. Simple baseline: CNN or gradient-boosted-tree on hand-crafted features
+2. Train/eval, report sensitivity + false-alarm rate against published CHB-MIT numbers
+3. Milestone: first real accuracy number
+
+-> 1. Train/test split - going with 80/20
+---> Train (18 patients): chb01, chb02, chb03, chb04, chb05, chb06, chb07, chb08, chb09, chb10, chb11, chb12, chb13, chb14, chb15, chb16, chb21, chb22
+---> Test (4 patients): chb17, chb18, chb19, chb20
+---> use the following piece of code to confirm that the test set does have some seizures
+uv run python -c "
+import numpy as np
+test_patients = ['chb17', 'chb18', 'chb19', 'chb20']
+for p in test_patients:
+    data = np.load(f'data/processed/labels/{p}_labels.csv')
+" 2>/dev/null
+# actually easier via the labels CSVs:
+uv run python -c "
+import pandas as pd
+for p in ['chb17', 'chb18', 'chb19', 'chb20']:
+    df = pd.read_csv(f'data/processed/labels/{p}_labels.csv')
+    n_seizures = df['seizure_start_sec'].notna().sum()
+    print(f'{p}: {n_seizures} seizures')
+"
+
+-> 2. Feature Extraction
+---> Raw windows are (n_windows, 18, 512) per patient; features will be (n_windows, ~120) — orders of magnitude smaller, and since we compute them per-window using a memory-mapped read (not a full load), peak memory stays flat regardless of patient size.
+---> Feature set: for each window, per channel — band power (delta 0.5–4Hz, theta 4–8Hz, alpha 8–13Hz, beta 13–30Hz, gamma 30–40Hz) via Welch's method, plus variance and line length (both cheap, standard time-domain features in seizure detection literature). 
+---> That's 5 band powers + 2 time-domain features × 18 channels = 126 features per window.
+
+-> scripts/03_extract_features.py 
+
+
 
 ********************************************************************************
 PHASE 3 — FOUNDATION MODEL (CHB-MIT)
