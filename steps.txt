@@ -203,7 +203,8 @@ while AUC-PR (which only cares about positive-class performance) exposes that th
 
 ---> 2. SMOTE 
 uv add imbalanced-learn
-run scripts/05_train_smote.py 
+run scripts/05_train_smote.py with threshold=0.1
+--> running again with threshold=0.3
 
 
 

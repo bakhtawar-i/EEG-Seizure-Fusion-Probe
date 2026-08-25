@@ -59,7 +59,7 @@ X_test, y_test = load_patients(TEST_PATIENTS)
 print(f"\nTest: {X_test.shape[0]} windows, {y_test.sum()} seizure ({y_test.mean()*100:.3f}%)\n")
 
 print("Applying SMOTE to training set...")
-smote = SMOTE(random_state=42, sampling_strategy=0.1)  # minority -> 10% of majority
+smote = SMOTE(random_state=42, sampling_strategy=0.3)  # minority -> 30% of majority
 X_train_smote, y_train_smote = smote.fit_resample(X_train, y_train)
 print(f"After SMOTE: {X_train_smote.shape[0]} windows, "
       f"{y_train_smote.sum()} seizure ({y_train_smote.mean()*100:.2f}%)")
@@ -104,3 +104,35 @@ for t in np.arange(0.05, 0.95, 0.05):
     tn_t, fp_t, fn_t, tp_t = confusion_matrix(y_test, y_pred_t).ravel()
     fa_t = fp_t / total_hours
     print(f"{t:>10.2f} {sens:>12.4f} {prec:>10.4f} {fa_t:>10.2f} {tp_t:>6} {fp_t:>6} {fn_t:>6}")
+
+
+# *** OUTPUT ***
+# === Results (threshold=0.5 + sampling strategy=0.1) ===
+# AUC-ROC: 0.8804
+# AUC-PR: 0.1572
+# Sensitivity (recall): 0.1447
+# Precision: 0.2711
+# False alarms/hour: 3.60
+# Confusion matrix: TN=166948, FP=336, FN=739, TP=125
+
+# === Threshold sweep ===
+#  Threshold  Sensitivity  Precision    FA/hour     TP     FP     FN
+#       0.05       0.5266     0.0378     123.84    455  11569    409
+#       0.10       0.4155     0.0552      65.72    359   6139    505
+#       0.15       0.3299     0.0703      40.36    285   3770    579
+#       0.20       0.2778     0.0865      27.12    240   2533    624
+#       0.25       0.2431     0.1111      17.99    210   1681    654
+#       0.30       0.2153     0.1356      12.70    186   1186    678
+#       0.35       0.1979     0.1630       9.40    171    878    693
+#       0.40       0.1771     0.1952       6.75    153    631    711
+#       0.45       0.1644     0.2305       5.07    142    474    722
+#       0.50       0.1447     0.2711       3.60    125    336    739
+#       0.55       0.1343     0.3268       2.56    116    239    748
+#       0.60       0.1273     0.3915       1.83    110    171    754
+#       0.65       0.1192     0.4402       1.40    103    131    761
+#       0.70       0.1146     0.5051       1.04     99     97    765
+#       0.75       0.1053     0.5796       0.71     91     66    773
+#       0.80       0.0984     0.6855       0.42     85     39    779
+#       0.85       0.0926     0.7547       0.28     80     26    784
+#       0.90       0.0799     0.8625       0.12     69     11    795
+
