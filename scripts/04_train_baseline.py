@@ -13,7 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TRAIN_PATIENTS = [f"chb{str(i).zfill(2)}" for i in range(1, 17)] + ["chb21", "chb22"]
+TRAIN_PATIENTS = ["chb01", "chb02", "chb03", "chb04", "chb05", "chb06", "chb07",
+                   "chb08", "chb09", "chb10", "chb11", "chb13", "chb14", "chb15",
+                   "chb16", "chb21", "chb22"]
 TEST_PATIENTS = ["chb17", "chb18", "chb19", "chb20"]
 
 FEATURES_DIR = "data/processed/features"
