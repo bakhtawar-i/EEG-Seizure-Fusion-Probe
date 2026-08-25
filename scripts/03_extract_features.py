@@ -49,7 +49,7 @@ def ensure_local(patient_id: str):
 
 def band_power(freqs, psd, low, high):
     idx = (freqs >= low) & (freqs <= high)
-    return np.trapz(psd[idx], freqs[idx]) if idx.any() else 0.0
+    return np.trapezoid(psd[idx], freqs[idx]) if idx.any() else 0.0
 
 
 def extract_window_features(window: np.ndarray) -> np.ndarray:
