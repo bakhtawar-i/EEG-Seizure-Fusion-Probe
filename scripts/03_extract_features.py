@@ -1,11 +1,12 @@
 """
 Extract hand-crafted features from preprocessed EEG windows.
-Reads each patient's windows via memory-mapped load (never loads full
-array into RAM), computes per-window features, saves a compact feature
-table + labels, uploads to S3.
+Auto-downloads from S3 if not already present locally.
+Reads windows via memory-mapped load (never loads full array into RAM),
+computes per-window features, saves a compact feature table + labels,
+uploads to S3.
 
 Usage:
-    uv run python scripts/03_extract_features.py chb04
+    uv run python scripts/extract_features.py chb04
 """
 import os
 import sys
@@ -27,13 +28,31 @@ BANDS = {
 N_CHANNELS = 18
 
 
+def ensure_local(patient_id: str):
+    x_path = f"data/processed/windows/{patient_id}_X.npy"
+    y_path = f"data/processed/windows/{patient_id}_y.npy"
+
+    if os.path.exists(x_path) and os.path.exists(y_path):
+        return
+
+    s3 = boto3.client("s3", region_name=os.environ["AWS_DEFAULT_REGION"])
+    bucket = os.environ["S3_BUCKET_NAME"]
+    os.makedirs("data/processed/windows", exist_ok=True)
+
+    if not os.path.exists(x_path):
+        print(f"  Downloading {patient_id}_X.npy from S3...")
+        s3.download_file(bucket, f"processed/windows/{patient_id}_X.npy", x_path)
+    if not os.path.exists(y_path):
+        print(f"  Downloading {patient_id}_y.npy from S3...")
+        s3.download_file(bucket, f"processed/windows/{patient_id}_y.npy", y_path)
+
+
 def band_power(freqs, psd, low, high):
     idx = (freqs >= low) & (freqs <= high)
     return np.trapz(psd[idx], freqs[idx]) if idx.any() else 0.0
 
 
 def extract_window_features(window: np.ndarray) -> np.ndarray:
-    """window shape: (n_channels, n_samples) -> flat feature vector"""
     features = []
     for ch in range(window.shape[0]):
         sig = window[ch]
@@ -41,15 +60,17 @@ def extract_window_features(window: np.ndarray) -> np.ndarray:
         for band_name, (low, high) in BANDS.items():
             features.append(band_power(freqs, psd, low, high))
         features.append(np.var(sig))
-        features.append(np.sum(np.abs(np.diff(sig))))  # line length
+        features.append(np.sum(np.abs(np.diff(sig))))
     return np.array(features, dtype=np.float32)
 
 
 def process_patient(patient_id: str):
+    ensure_local(patient_id)
+
     x_path = f"data/processed/windows/{patient_id}_X.npy"
     y_path = f"data/processed/windows/{patient_id}_y.npy"
 
-    X = np.load(x_path, mmap_mode="r")  # memory-mapped, not loaded into RAM
+    X = np.load(x_path, mmap_mode="r")
     y = np.load(y_path)
 
     n_windows = X.shape[0]
@@ -58,7 +79,7 @@ def process_patient(patient_id: str):
     feature_matrix = np.zeros((n_windows, n_features), dtype=np.float32)
 
     for i in range(n_windows):
-        window = np.asarray(X[i])  # pulls just this one window into memory
+        window = np.asarray(X[i])
         feature_matrix[i] = extract_window_features(window)
         if (i + 1) % 5000 == 0:
             print(f"  {patient_id}: {i+1}/{n_windows} windows processed")
@@ -79,6 +100,11 @@ def process_patient(patient_id: str):
     s3.upload_file(feat_path, bucket, f"processed/features/{patient_id}_features.npy")
     s3.upload_file(label_path, bucket, f"processed/features/{patient_id}_labels.npy")
     print(f"Uploaded to s3://{bucket}/processed/features/")
+
+    # Clean up raw window files now that features are extracted + saved
+    os.remove(x_path)
+    os.remove(y_path)
+    print(f"Cleaned up local {patient_id}_X.npy, {patient_id}_y.npy")
 
 
 if __name__ == "__main__":

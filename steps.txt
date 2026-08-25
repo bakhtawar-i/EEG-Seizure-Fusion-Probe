@@ -138,6 +138,7 @@ for p in ['chb17', 'chb18', 'chb19', 'chb20']:
 ---> Feature set: for each window, per channel — band power (delta 0.5–4Hz, theta 4–8Hz, alpha 8–13Hz, beta 13–30Hz, gamma 30–40Hz) via Welch's method, plus variance and line length (both cheap, standard time-domain features in seizure detection literature). 
 ---> That's 5 band powers + 2 time-domain features × 18 channels = 126 features per window.
 
+-> uv add scipy 
 -> scripts/03_extract_features.py 
 
 
