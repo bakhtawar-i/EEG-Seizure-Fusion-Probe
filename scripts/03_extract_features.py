@@ -110,3 +110,27 @@ def process_patient(patient_id: str):
 if __name__ == "__main__":
     patient_id = sys.argv[1]
     process_patient(patient_id)
+
+# *** OUTPUT ***
+
+# chb01: extracted (73223, 126) feature matrix, 449 seizure windows
+# Saved locally to data/processed/features/chb01_features.npy, data/processed/features/chb01_labels.npy
+# Uploaded to s3://eeg-seizure-fusion-probe/processed/features/
+# Cleaned up local chb01_X.npy, chb01_y.npy
+
+# *** CHECK FEATURE SHAPE ***
+
+# uv run python -c "
+# import numpy as np
+# X = np.load('data/processed/features/chb01_features.npy')
+# y = np.load('data/processed/features/chb01_labels.npy')
+# print('Feature matrix shape:', X.shape)
+# print('Labels shape:', y.shape)
+# print('Seizure windows:', y.sum(), f'({y.mean()*100:.2f}%)')
+# "
+
+# *** OUTPUT ***
+
+# Feature matrix shape: (73223, 126)
+# Labels shape: (73223,)
+# Seizure windows: 449 (0.61%)

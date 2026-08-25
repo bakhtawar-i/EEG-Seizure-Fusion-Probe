@@ -141,6 +141,17 @@ for p in ['chb17', 'chb18', 'chb19', 'chb20']:
 -> uv add scipy 
 -> scripts/03_extract_features.py 
 
+-> check feature shape
+uv run python -c "
+import numpy as np
+X = np.load('data/processed/features/chb01_features.npy')
+y = np.load('data/processed/features/chb01_labels.npy')
+print('Feature matrix shape:', X.shape)
+print('Labels shape:', y.shape)
+print('Seizure windows:', y.sum(), f'({y.mean()*100:.2f}%)')
+"
+
+
 
 
 ********************************************************************************
