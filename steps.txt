@@ -210,7 +210,7 @@ results show only a slight improvement - documented
 
 -> 5. adding new features 
 ---> scripts/06_extract_features_v2.py 
-
+---> uv add pywavelets
 
 
 
