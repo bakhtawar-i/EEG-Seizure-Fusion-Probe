@@ -71,7 +71,18 @@ model = lgb.LGBMClassifier(
     learning_rate=0.05,
     num_leaves=31,
     random_state=42,
+    n_jobs=2,          # match instance vCPU count
+    verbose=1,          # shows training progress
 )
+
+# model = lgb.LGBMClassifier(
+#     objective="binary",
+#     scale_pos_weight=scale_pos_weight,
+#     n_estimators=500,
+#     learning_rate=0.05,
+#     num_leaves=31,
+#     random_state=42,
+# )
 
 print("\nTraining...")
 model.fit(X_train, y_train)

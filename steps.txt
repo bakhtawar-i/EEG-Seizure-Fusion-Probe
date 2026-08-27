@@ -212,6 +212,36 @@ results show only a slight improvement - documented
 ---> scripts/06_extract_features_v2.py 
 ---> uv add pywavelets
 
+---> once done, check if the whole thing completed
+uv run python -c "
+import os, boto3
+from dotenv import load_dotenv
+load_dotenv()
+s3 = boto3.client('s3', region_name=os.environ['AWS_DEFAULT_REGION'])
+bucket = os.environ['S3_BUCKET_NAME']
+paginator = s3.get_paginator('list_objects_v2')
+
+found = set()
+for page in paginator.paginate(Bucket=bucket, Prefix='processed/features_v2/'):
+    for obj in page.get('Contents', []):
+        found.add(obj['Key'].split('/')[-1])
+
+expected_patients = [f'chb{str(i).zfill(2)}' for i in range(1, 23) if i != 12]
+missing = []
+for p in expected_patients:
+    f_ok = f'{p}_features.npy' in found
+    l_ok = f'{p}_labels.npy' in found
+    if not (f_ok and l_ok):
+        missing.append(p)
+        print(f'{p}: features={\"OK\" if f_ok else \"MISSING\"}, labels={\"OK\" if l_ok else \"MISSING\"}')
+
+print(f'\\nTotal files: {len(found)} (expect 42)')
+if not missing:
+    print('All 21 patients confirmed complete.')
+"
+
+
+
 
 
 
