@@ -240,10 +240,8 @@ if not missing:
     print('All 21 patients confirmed complete.')
 "
 
-
-
-
-
+6. run scripts/07_train_baseline_v2.py 
+---> results used as baseline for comparison with foundation models.
 
 
 ********************************************************************************
