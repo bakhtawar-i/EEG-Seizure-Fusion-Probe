@@ -110,9 +110,9 @@ cd ../../..
 PHASE 2 — BASELINE MODEL (CHB-MIT)
 ******************************************************************************
 
-1. Simple baseline: CNN or gradient-boosted-tree on hand-crafted features
-2. Train/eval, report sensitivity + false-alarm rate against published CHB-MIT numbers
-3. Milestone: first real accuracy number
+-> Simple baseline: CNN or gradient-boosted-tree on hand-crafted features
+-> Train/eval, report sensitivity + false-alarm rate against published CHB-MIT numbers
+-> Milestone: first real accuracy number
 
 -> 1. Train/test split - going with 80/20
 ---> Train (18 patients): chb01, chb02, chb03, chb04, chb05, chb06, chb07, chb08, chb09, chb10, chb11, chb12, chb13, chb14, chb15, chb16, chb21, chb22
@@ -248,9 +248,46 @@ if not missing:
 PHASE 3 — FOUNDATION MODEL (CHB-MIT)
 ********************************************************************************
 
--> Fine-tune pretrained EEG foundation model (LaBraM, or BENDR as fallback) on same task
+-> Fine-tune pretrained EEG foundation model (LaBraM, BENDR, NeuroGPT) on same task
 -> Compare against Phase 2 baseline — does the foundation model actually outperform, or does it underperform like EEG-Bench found on sleep staging?
 -> Milestone: headline comparison result
+
+1. Create new EC2 instance with 100GB + GPU
+--> verify GPU + PyTorch working
+nvidia-smi
+python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
+
+--> new instance so reclone git repo
+git clone https://github.com/bakhtawar-i/EEG-Seizure-Fusion-Probe.git 
+cd EEG-Seizure-Fusion-Probe
+
+--> reinstall uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+
+--> uv sync
+
+--> chheck CUDA 
+uv run python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
+
+--> add the AWS_DEFAULT_REGION to the new instance
+echo 'export AWS_DEFAULT_REGION=us-east-1' >> ~/.bashrc
+source ~/.bashrc
+
+--> add the S#_BUCKET_NAME to the new instance
+echo 'export AWS_BUCKET_NAME=eeg-seizure-fusion-probe' >> ~/.bashrc
+source ~/.bashrc
+
+--> check that S3 is working
+uv run python -c "                                                
+import os, boto3
+from dotenv import load_dotenv
+load_dotenv()
+s3 = boto3.client('s3', region_name=os.environ['AWS_DEFAULT_REGION'])
+bucket = os.environ['S3_BUCKET_NAME']
+resp = s3.list_objects_v2(Bucket=bucket, Prefix='processed/', MaxKeys=5)
+print([o['Key'] for o in resp.get('Contents', [])])
+"
 
 **********************************************************************************
 PHASE 4 — METADATA FUSION
