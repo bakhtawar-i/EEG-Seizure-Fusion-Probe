@@ -289,6 +289,99 @@ resp = s3.list_objects_v2(Bucket=bucket, Prefix='processed/', MaxKeys=5)
 print([o['Key'] for o in resp.get('Contents', [])])
 "
 
+2. Clone and set up LaBraM
+cd ~
+git clone https://github.com/935963004/LaBraM.git
+cd LaBraM
+ls checkpoints/ # to confirm that the labram-base.pth exists
+
+3. While setting up LaBraM there is a dependency error with pyhealth.metrics
+--> open file 
+nano ~/LaBraM/utils.py
+
+--> remove this 
+from pyhealth.metrics import binary_metrics_fn, multiclass_metrics_fn
+
+--> replace the get_metrics function with this
+def get_metrics(output, target, metrics, is_binary, threshold=0.5):
+    """
+    Drop-in replacement for pyhealth.metrics.binary_metrics_fn /
+    multiclass_metrics_fn, using scikit-learn instead — avoids a
+    pandas<2 dependency conflict from pyhealth.
+    """
+    import numpy as np
+    from sklearn.metrics import (
+        accuracy_score, balanced_accuracy_score, roc_auc_score,
+        average_precision_score, f1_score, precision_score, recall_score,
+        cohen_kappa_score
+    )
+
+    output = np.asarray(output)
+    target = np.asarray(target)
+
+    if is_binary:
+        if 'roc_auc' not in metrics or sum(target) * (len(target) - sum(target)) != 0:
+            preds = (output >= threshold).astype(int)
+            results = {}
+            for m in metrics:
+                if m == "accuracy":
+                    results[m] = accuracy_score(target, preds)
+                elif m == "balanced_accuracy":
+                    results[m] = balanced_accuracy_score(target, preds)
+                elif m == "pr_auc":
+                    results[m] = average_precision_score(target, output)
+                elif m == "roc_auc":
+                    results[m] = roc_auc_score(target, output)
+                elif m == "f1":
+                    results[m] = f1_score(target, preds)
+                elif m == "precision":
+                    results[m] = precision_score(target, preds, zero_division=0)
+                elif m == "recall":
+                    results[m] = recall_score(target, preds)
+                else:
+                    raise ValueError(f"Unsupported metric: {m}")
+        else:
+            results = {
+                "accuracy": 0.0,
+                "balanced_accuracy": 0.0,
+                "pr_auc": 0.0,
+                "roc_auc": 0.0,
+            }
+    else:
+        preds = np.argmax(output, axis=1)
+        results = {}
+        for m in metrics:
+            if m == "accuracy":
+                results[m] = accuracy_score(target, preds)
+            elif m == "balanced_accuracy":
+                results[m] = balanced_accuracy_score(target, preds)
+            elif m == "f1_weighted":
+                results[m] = f1_score(target, preds, average="weighted")
+            elif m == "cohen_kappa":
+                results[m] = cohen_kappa_score(target, preds)
+            else:
+                raise ValueError(f"Unsupported metric: {m}")
+    return results
+
+--> save and exit 
+--> check that it no longer exists
+grep -n "pyhealth" ~/LaBraM/utils.py
+
+--> install the other non-conflicting dependencies 
+uv add timm==0.4.12 einops h5py blobfile 
+
+--> add tensorboardX 
+cd ~/EEG-Seizure-Fusion-Probe
+uv add tensorboardX
+
+--> confirm everything imported cleanly 
+cd ~/LaBraM
+uv run --project ~/EEG-Seizure-Fusion-Probe python -c "import utils; print('utils.py loads cleanly')"
+
+
+
+
+
 **********************************************************************************
 PHASE 4 — METADATA FUSION
 **********************************************************************************
