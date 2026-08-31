@@ -378,6 +378,20 @@ uv add tensorboardX
 cd ~/LaBraM
 uv run --project ~/EEG-Seizure-Fusion-Probe python -c "import utils; print('utils.py loads cleanly')"
 
+--> confirm compatible channels
+
+cd ~/EEG-Seizure-Fusion-Probe
+uv run python -c "
+standard_1020 = ['FP1-F7', 'F7-T7', 'T7-P7', 'P7-O1', 'FP2-F8', 'F8-T8', 'T8-P8', 'P8-O2', 'FP1-F3', 'F3-C3', 'C3-P3', 'P3-O1', 'FP2-F4', 'F4-C4', 'C4-P4', 'P4-O2']
+my_channels = ['FP1-F7', 'F7-T7', 'T7-P7', 'P7-O1', 'FP1-F3', 'F3-C3', 'C3-P3', 'P3-O1', 'FP2-F4', 'F4-C4', 'C4-P4', 'P4-O2', 'FP2-F8', 'F8-T8', 'T8-P8', 'P8-O2', 'FZ-CZ', 'CZ-PZ']
+missing = [c for c in my_channels if c not in standard_1020]
+print('Not in LaBraM standard_1020:', missing)
+print('Usable channels:', [c for c in my_channels if c in standard_1020])
+print(f'{len(my_channels) - len(missing)}/{len(my_channels)} channels compatible')
+"
+
+4. Preprocess for every patient
+--> uv run python scripts/08_preprocess_for_labram.py chb01
 
 
 
