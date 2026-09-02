@@ -391,7 +391,58 @@ print(f'{len(my_channels) - len(missing)}/{len(my_channels)} channels compatible
 "
 
 4. Preprocess for every patient
+--> pull the csv label files for all patients onto this new gpu instance
+
+uv run python -c "
+import os, boto3
+from dotenv import load_dotenv
+load_dotenv()
+s3 = boto3.client('s3', region_name=os.environ['AWS_DEFAULT_REGION'])
+bucket = os.environ['S3_BUCKET_NAME']
+os.makedirs('data/processed/labels', exist_ok=True)
+for i in range(1, 23):
+    if i == 12:
+        continue
+    p = f'chb{str(i).zfill(2)}'
+    key = f'processed/labels/{p}_labels.csv'
+    local = f'data/processed/labels/{p}_labels.csv'
+    try:
+        s3.download_file(bucket, key, local)
+        print(f'{p}: downloaded')
+    except Exception as e:
+        print(f'{p}: FAILED - {e}')
+"
+
 --> uv run python scripts/08_preprocess_for_labram.py chb01
+
+5. Sanity check
+
+uv run python -c "
+import pickle
+import os
+files = os.listdir('data/processed/labram/chb01')
+print(f'{len(files)} local files')
+with open(f'data/processed/labram/chb01/{files[0]}', 'rb') as f:
+    sample = pickle.load(f)
+print('X shape:', sample['X'].shape)
+print('y:', sample['y'])
+print('X dtype:', sample['X'].dtype)
+print('X value range:', sample['X'].min(), sample['X'].max())
+"
+
+--> shape should be (16, 2000)
+
+6. Then run for all of them 
+
+for i in $(seq -w 1 22); do
+  if [ "$i" == "12" ]; then
+    echo "Skipping chb12"
+    continue
+  fi
+  patient="chb${i}"
+  echo "=== LaBraM preprocessing: ${patient} ==="
+  uv run python scripts/08_preprocess_for_labram.py "${patient}"
+done
 
 
 
