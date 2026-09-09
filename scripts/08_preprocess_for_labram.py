@@ -34,13 +34,31 @@ LABRAM_CHANNELS = [
 
 
 def ensure_raw_local(patient_id: str):
-    """Raw EDFs may need re-downloading if not present (Phase 1 raw data
-    was cleared from disk after processing)."""
+    """Raw EDFs may need re-downloading if not present. Tries S3 first
+    (fast, same-network), falls back to PhysioNet (slow) if not in S3."""
     edf_dir = f"data/raw/chbmit/{patient_id}"
     if os.path.isdir(edf_dir) and glob.glob(os.path.join(edf_dir, "*.edf")):
         return
-    print(f"  Raw EDFs for {patient_id} not found locally — downloading from PhysioNet...")
-    os.makedirs("data/raw/chbmit", exist_ok=True)
+
+    s3 = boto3.client("s3", region_name=os.environ["AWS_DEFAULT_REGION"])
+    bucket = os.environ["S3_BUCKET_NAME"]
+    os.makedirs(edf_dir, exist_ok=True)
+
+    paginator = s3.get_paginator("list_objects_v2")
+    found_any = False
+    for page in paginator.paginate(Bucket=bucket, Prefix=f"raw/chbmit/{patient_id}/"):
+        for obj in page.get("Contents", []):
+            found_any = True
+            key = obj["Key"]
+            fname = os.path.basename(key)
+            local_path = os.path.join(edf_dir, fname)
+            s3.download_file(bucket, key, local_path)
+
+    if found_any:
+        print(f"  Downloaded {len(os.listdir(edf_dir))} files for {patient_id} from S3")
+        return
+
+    print(f"  {patient_id} not in S3 — downloading from PhysioNet (slow)...")
     os.system(
         f"cd data/raw/chbmit && wget -q -r -N -c -np -nH --cut-dirs=3 "
         f"https://physionet.org/files/chbmit/1.0.0/{patient_id}/"
