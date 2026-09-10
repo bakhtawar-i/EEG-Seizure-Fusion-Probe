@@ -452,7 +452,24 @@ done
 --> 1. A file-listing function that builds train/test lists from your patient-level split (chb01–16+chb21+chb22 train, chb17–20 test), globbing each patient's directory for .pkl files
 --> 2. A Dataset class matching TUABLoader's interface: __getitem__ loads the pickle, returns (X, y) as tensors
 
---> uv run python scripts/10_chbmit_loader.py
+--> uv run python scripts/chbmit_loader.py
+
+
+8. For finetuning add the following block to the run_class_finetuning.py through nano
+
+    elif args.dataset == 'CHBMIT':
+        import sys
+        sys.path.insert(0, "/home/ubuntu/EEG-Seizure-Fusion-Probe/scripts")
+        from chbmit_loader import build_chbmit_datasets
+        train_dataset, test_dataset = build_chbmit_datasets(sampling_rate=200)
+        val_dataset = test_dataset
+        ch_names = ["FP1-F7", "F7-T7", "T7-P7", "P7-O1", "FP1-F3", "F3-C3", "C3-P3", "P3-O1",
+                    "FP2-F4", "F4-C4", "C4-P4", "P4-O2", "FP2-F8", "F8-T8", "T8-P8", "P8-O2"]
+        args.nb_classes = 1
+        metrics = ["pr_auc", "roc_auc", "accuracy", "balanced_accuracy"]
+
+-> add it elif args.dataset == 'TUEV': block 
+
 
 **********************************************************************************
 PHASE 4 — METADATA FUSION
