@@ -447,6 +447,13 @@ for i in $(seq -w 1 22); do
 done
 
 
+7. write the CHB-MIT dataset loader
+-> modeled on their TUABLoader class, pointing at this local data/processed/labram/{patient}/*.pkl structure. This needs:
+--> 1. A file-listing function that builds train/test lists from your patient-level split (chb01–16+chb21+chb22 train, chb17–20 test), globbing each patient's directory for .pkl files
+--> 2. A Dataset class matching TUABLoader's interface: __getitem__ loads the pickle, returns (X, y) as tensors
+
+--> uv run python scripts/10_chbmit_loader.py
+
 **********************************************************************************
 PHASE 4 — METADATA FUSION
 **********************************************************************************
