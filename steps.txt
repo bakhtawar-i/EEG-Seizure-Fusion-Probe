@@ -470,6 +470,80 @@ done
 
 -> add it elif args.dataset == 'TUEV': block 
 
+cd ~/LaBraM
+CUDA_LAUNCH_BLOCKING=1 uv run --project ~/EEG-Seizure-Fusion-Probe python run_class_finetuning.py \
+  --dataset CHBMIT \
+  --model labram_base_patch200_200 \
+  --finetune checkpoints/labram-base.pth \
+  --output_dir ./checkpoints_chbmit_test \
+  --log_dir ./log_chbmit_test \
+  --batch_size 64 \
+  --epochs 1 \
+  --warmup_epochs 0 \
+  --lr 5e-4 \
+  --nb_classes 1 \
+  --abs_pos_emb \
+  --disable_eval_during_finetuning
+
+
+9. Run finetune for all
+
+-> tmux new -s labram_eval_test
+cd ~/LaBraM
+uv run --project ~/EEG-Seizure-Fusion-Probe python run_class_finetuning.py \
+  --dataset CHBMIT \
+  --model labram_base_patch200_200 \
+  --finetune checkpoints/labram-base.pth \
+  --output_dir ./checkpoints_chbmit_v1 \
+  --log_dir ./log_chbmit_v1 \
+  --batch_size 64 \
+  --epochs 1 \
+  --warmup_epochs 0 \
+  --lr 5e-4 \
+  --nb_classes 1 \
+  --abs_pos_emb
+
+
+10. After looking at the results - run finetuning with adjusted params for 10 epochs
+
+cd ~/LaBraM
+uv run --project ~/EEG-Seizure-Fusion-Probe python run_class_finetuning.py \
+  --dataset CHBMIT \
+  --model labram_base_patch200_200 \
+  --finetune checkpoints/labram-base.pth \
+  --output_dir ./checkpoints_chbmit_10ep_final \
+  --log_dir ./log_chbmit_10ep_final \
+  --batch_size 64 \
+  --epochs 10 \
+  --warmup_epochs 1 \
+  --lr 3e-4 \
+  --clip_grad 1.0 \
+  --nb_classes 1 \
+  --abs_pos_emb
+
+
+********************************************************************
+Phase 3 RESULTS
+********************************************************************
+
+The learning curve tells a clear story:
+
+Epochs 0-1: collapsed, near-random (AUC-PR ~0.003, ROC-AUC ~0.5)
+Epochs 2-4: rapid improvement, peaking at epoch 4: AUC-PR 0.190, ROC-AUC 0.890, balanced accuracy 0.530
+Epochs 5-9: steady decline — AUC-PR drops back down to 0.066 by epoch 9, ROC-AUC falls to 0.636
+
+This is classic overfitting, visible directly in the numbers: train_loss keeps monotonically decreasing the whole time (0.074 → 0.009, the model fits the training data better and better), while validation/test AUC-PR peaks at epoch 4 and then degrades — the model is increasingly memorizing training-specific patterns rather than learning generalizable seizure signal. This is a completely normal, well-documented failure mode, and catching it this clearly is actually a good outcome methodologically — you have direct evidence of exactly when to stop.
+
+Best LaBraM result: epoch 4 — AUC-PR 0.190, AUC-ROC 0.890, balanced accuracy 0.530.
+
+-------------------------------------------------------------------------------------------------------------------------
+Model                                       AUC-ROC         AUC-PR          Balanced Acc            Notes
+-------------------------------------------------------------------------------------------------------------------------
+GBM baseline (expanded features)             0.874           0.174	            —	               Phase 2
+LaBraM (best epoch, #4 of 10)                0.890	         0.190	           0.530	           Phase 3
+LaBraM (final epoch, #9 — overfit)           0.636           0.066             0.525          shown for contrast
+-------------------------------------------------------------------------------------------------------------------------
+
 
 **********************************************************************************
 PHASE 4 — METADATA FUSION
