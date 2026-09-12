@@ -42,3 +42,9 @@ if __name__ == "__main__":
     chs_info = get_chbmit_chs_info()
     print(f"Total channels: {len(chs_info)}")
     print(chs_info[0])
+
+
+# Total channels: 18
+# {'loc': array([-0.0294367,  0.0839171, -0.00699  ,  0.       ,  0.       ,
+#         0.       ,        nan,        nan,        nan,        nan,
+#               nan,        nan]), 'unit_mul': 0 (FIFF_UNITM_NONE), 'range': 1.0, 'cal': 1.0, 'kind': 2 (FIFFV_EEG_CH), 'coil_type': 1 (FIFFV_COIL_EEG), 'unit': 107 (FIFF_UNIT_V), 'coord_frame': 4 (FIFFV_COORD_HEAD), 'ch_name': 'FP1-F7', 'scanno': 1, 'logno': 1}
