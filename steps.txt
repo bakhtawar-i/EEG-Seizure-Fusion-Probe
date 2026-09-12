@@ -245,7 +245,7 @@ if not missing:
 
 
 ********************************************************************************
-PHASE 3 — FOUNDATION MODEL (CHB-MIT)
+PHASE 3.1 — FOUNDATION MODEL (CHB-MIT) — LaBraM
 ********************************************************************************
 
 -> Fine-tune pretrained EEG foundation model (LaBraM, BENDR, NeuroGPT) on same task
@@ -543,6 +543,125 @@ GBM baseline (expanded features)             0.874           0.174	            �
 LaBraM (best epoch, #4 of 10)                0.890	         0.190	           0.530	           Phase 3
 LaBraM (final epoch, #9 — overfit)           0.636           0.066             0.525          shown for contrast
 -------------------------------------------------------------------------------------------------------------------------
+
+
+********************************************************************************
+PHASE 3.2 — FOUNDATION MODEL (CHB-MIT) — BENDR 
+********************************************************************************
+
+1. Install: uv add braindecode huggingface_hub
+
+cd ~/EEG-Seizure-Fusion-Probe
+uv add braindecode huggingface_hub
+
+-> sanity check for checkpoints loading correctly
+uv run python -c "
+from braindecode.models import InterpolatedBENDR
+import torch
+
+model = InterpolatedBENDR.from_pretrained(
+    'braindecode/braindecode-bendr',
+    n_outputs=2,
+)
+
+# Count how many parameters actually got loaded vs randomly initialized
+state_dict = model.state_dict()
+print(f'Total parameters in model: {sum(p.numel() for p in model.parameters())}')
+print(f'Total state dict keys: {len(state_dict)}')
+
+# Print a few weight values to sanity-check they look like real trained
+# weights (not all zeros/random-looking uniform noise)
+for name, param in list(model.named_parameters())[:3]:
+    print(f'{name}: mean={param.mean().item():.6f}, std={param.std().item():.6f}')
+"
+--> error do to version mismatch
+
+-> workaround as follows:
+
+uv run python -c "
+from huggingface_hub import hf_hub_download
+import json
+
+config_path = hf_hub_download(repo_id='braindecode/braindecode-bendr', filename='config.json')
+with open(config_path) as f:
+    config = json.load(f)
+
+print('Original config keys:', list(config.keys()))
+
+# Remove obsolete keys no longer accepted by the installed braindecode version
+config.pop('n_chans_pretrained', None)
+config.pop('chan_proj_max_norm', None)
+
+print('Cleaned config keys:', list(config.keys()))
+
+with open('/tmp/bendr_config_clean.json', 'w') as f:
+    json.dump(config, f)
+"
+
+-> uv add safetensors
+
+-> load manually using new keys + sanity check
+
+uv run python -c "
+from braindecode.models import BENDR
+from huggingface_hub import hf_hub_download
+import json
+import torch
+from safetensors.torch import load_file
+
+with open('/tmp/bendr_config_clean.json') as f:
+    config = json.load(f)
+
+model = BENDR.from_config(config)
+print('Model constructed from cleaned config')
+
+weights_path = hf_hub_download(repo_id='braindecode/braindecode-bendr', filename='model.safetensors')
+state_dict = load_file(weights_path)
+missing, unexpected = model.load_state_dict(state_dict, strict=False)
+print(f'Missing keys: {len(missing)}')
+print(f'Unexpected keys: {len(unexpected)}')
+if missing:
+    print('Missing:', missing[:10])
+if unexpected:
+    print('Unexpected:', unexpected[:10])
+print(f'Total params loaded: {sum(p.numel() for p in model.parameters())}')
+
+# Sanity check actual weight values aren't just random init
+for name, param in list(model.named_parameters())[:3]:
+    print(f'{name}: mean={param.mean().item():.6f}, std={param.std().item():.6f}')
+"
+
+-> saving it as scripts/bendr_utils.py 
+
+
+2. Verify weight loading explicitly — check the loaded state dict matches all 99 expected weights (given the documented history of the silent 0/99 bug), not just that from_pretrained runs without error
+
+-> Build chs_info using MNE's standard montage, assigning each bipolar channel the position of its first electrode
+
+uv run python -c "
+import mne
+
+# CHB-MIT's 18 bipolar channels, mapped to their first electrode for positioning
+bipolar_channels = ['FP1-F7', 'F7-T7', 'T7-P7', 'P7-O1', 'FP1-F3', 'F3-C3', 'C3-P3', 'P3-O1',
+                     'FP2-F4', 'F4-C4', 'C4-P4', 'P4-O2', 'FP2-F8', 'F8-T8', 'T8-P8', 'P8-O2',
+                     'FZ-CZ', 'CZ-PZ']
+first_electrodes = [ch.split('-')[0] for ch in bipolar_channels]
+print('First electrodes:', first_electrodes)
+
+montage = mne.channels.make_standard_montage('standard_1020')
+positions = montage.get_positions()['ch_pos']
+
+# Check which of our first-electrode names exist in the standard montage
+missing = [e for e in first_electrodes if e.upper() not in [k.upper() for k in positions.keys()]]
+print('Missing from standard_1020 montage:', missing)
+"
+
+
+3. Build chs_info for your 18 CHB-MIT channels — assign each bipolar channel a standard MNE montage position based on its first electrode (same approximation logic as LaBraM, but this time feeding a proper interpolation system rather than a hard index lookup — arguably a more principled version of the same compromise)
+Confirm whether your Phase 1 raw .npy windows (256Hz, 18 channels, 2s) can be used directly — since BENDR's native sfreq is 256Hz, no resampling needed; window length (2s) will need to match whatever input_window_seconds you configure, may need trimming/reshaping but not full reprocessing
+Write CHB-MIT Dataset class — simpler than LaBraM's, standard PyTorch, no custom repo script to adapt
+Fine-tuning loop — plain PyTorch, apply gradient clipping + conservative LR from the start (lessons from LaBraM)
+Smoke test → full run → log results
 
 
 **********************************************************************************
