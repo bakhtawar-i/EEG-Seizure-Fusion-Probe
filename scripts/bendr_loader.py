@@ -80,3 +80,9 @@ if __name__ == "__main__":
     X, y = train_ds[0]
     print(f"Sample shape: {X.shape}, label: {y}")
     print(f"Sample dtype: {X.dtype}")
+
+
+# Train: 1439172 windows across 17 patients
+# Test: 168148 windows across 4 patients
+# Sample shape: torch.Size([18, 512]), label: 0
+# Sample dtype: torch.float32
