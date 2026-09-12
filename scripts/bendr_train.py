@@ -83,7 +83,7 @@ def main():
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5, weight_decay=0.05)
 
-    n_epochs = 1
+    n_epochs = 10
     logs = []
 
     for epoch in range(n_epochs):
