@@ -2,6 +2,7 @@ from braindecode.models import InterpolatedBENDR
 from huggingface_hub import hf_hub_download
 from safetensors.torch import load_file
 import json
+import torch
 import sys
 sys.path.insert(0, 'scripts')
 from chbmit_chs_info import get_chbmit_chs_info
@@ -17,9 +18,12 @@ config.pop('chan_proj_max_norm', None)
 config['n_outputs'] = 2
 config['n_chans'] = len(chs_info)
 config['chs_info'] = chs_info
-# Remove pretrained-specific channel count/sfreq so InterpolatedBENDR
-# can build its interpolation layer for OUR channel set
 config.pop('n_times', None)
+
+# Fix: activation is stored as a string path, but the model expects
+# the actual class object
+if isinstance(config.get('activation'), str):
+    config['activation'] = torch.nn.GELU
 
 model = InterpolatedBENDR.from_config(config)
 print('InterpolatedBENDR constructed successfully')
