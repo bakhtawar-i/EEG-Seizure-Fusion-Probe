@@ -75,12 +75,22 @@ def main():
 
     # Class-weighted loss for imbalance, same principle as Phase 2's GBM
     train_labels = np.array([train_dataset[i][1] for i in range(0, len(train_dataset), 100)])  # sampled estimate
-    pos_weight_value = (train_labels == 0).sum() / max((train_labels == 1).sum(), 1)
+    
+    # pos_weight_value = (train_labels == 0).sum() / max((train_labels == 1).sum(), 1)
+    # pos_weight = torch.tensor([pos_weight_value], device=DEVICE)
+    # print(f"Estimated pos_weight: {pos_weight_value:.1f}")
+
+    # criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    # optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=0.05)
+
+    # Cap pos_weight - 193x is too aggressive and destabilizes training;
+    # cap at a much gentler value, rely more on epochs to learn rare class
+    pos_weight_value = min(pos_weight_value, 10.0)
     pos_weight = torch.tensor([pos_weight_value], device=DEVICE)
-    print(f"Estimated pos_weight: {pos_weight_value:.1f}")
+    print(f"Capped pos_weight: {pos_weight_value:.1f}")
 
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=0.05)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5, weight_decay=0.05)
 
     n_epochs = 1
     logs = []
@@ -98,6 +108,11 @@ def main():
             logits = model(X)[:, 1]
             loss = criterion(logits, y)
             loss.backward()
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+            if not torch.isfinite(loss):
+                print(f"NaN/Inf loss detected at epoch {epoch} step {step} — stopping.")
+                raise RuntimeError("Training diverged")
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
@@ -128,3 +143,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+#     Automatic origin fit: head of radius 90.4 mm
+# Creating RawArray with float64 data, n_channels=20, n_times=18
+#     Range : 0 ... 17 =      0.000 ...     0.170 secs
+# Ready.
+# InterpolatedBENDR loaded cleanly: 157142075 params
+# Estimated pos_weight: 193.5
+# Epoch 0 step 0/22488 loss 2.8797

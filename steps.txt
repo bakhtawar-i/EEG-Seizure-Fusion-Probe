@@ -706,8 +706,10 @@ Output sample: tensor([-0.0928, -0.1107])
 
 -> uv run python scripts/bendr_loader.py 
 
-
 6. Fine-tuning loop — plain PyTorch, apply gradient clipping + conservative LR from the start (lessons from LaBraM)
+
+-> uv run python scripts/bendr_train.py
+
 7. Smoke test → full run → log results
 
 
