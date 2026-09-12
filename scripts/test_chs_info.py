@@ -36,3 +36,13 @@ print(f'Unexpected keys: {len(unexpected)}')
 if missing:
     print('Missing (first 10):', missing[:10])
 print(f'Total params: {sum(p.numel() for p in model.parameters())}')
+
+
+#     Automatic origin fit: head of radius 90.4 mm
+# Creating RawArray with float64 data, n_channels=20, n_times=18
+#     Range : 0 ... 17 =      0.000 ...     0.170 secs
+# Ready.
+# InterpolatedBENDR constructed successfully
+# Missing keys: 0
+# Unexpected keys: 0
+# Total params: 157142075
