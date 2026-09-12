@@ -658,10 +658,57 @@ print('Missing from standard_1020 montage:', missing)
 
 
 3. Build chs_info for your 18 CHB-MIT channels — assign each bipolar channel a standard MNE montage position based on its first electrode (same approximation logic as LaBraM, but this time feeding a proper interpolation system rather than a hard index lookup — arguably a more principled version of the same compromise)
-Confirm whether your Phase 1 raw .npy windows (256Hz, 18 channels, 2s) can be used directly — since BENDR's native sfreq is 256Hz, no resampling needed; window length (2s) will need to match whatever input_window_seconds you configure, may need trimming/reshaping but not full reprocessing
-Write CHB-MIT Dataset class — simpler than LaBraM's, standard PyTorch, no custom repo script to adapt
-Fine-tuning loop — plain PyTorch, apply gradient clipping + conservative LR from the start (lessons from LaBraM)
-Smoke test → full run → log results
+
+-> uv run python scripts/chbmit_chs_info.py 
+
+-> uv run python scripts/test_chs_info.py 
+
+-> updated bendr_utils.py
+--> this is what we will be using to load 
+
+4. Confirm whether your Phase 1 raw .npy windows (256Hz, 18 channels, 2s) can be used directly — since BENDR's native sfreq is 256Hz, no resampling needed; window length (2s) will need to match whatever input_window_seconds you configure, may need trimming/reshaping but not full reprocessing
+
+-> test whether phase 1 data can be useduv run python -c "
+import torch
+import sys
+sys.path.insert(0, 'scripts')
+from bendr_utils import load_pretrained_interpolated_bendr
+from chbmit_chs_info import get_chbmit_chs_info
+
+chs_info = get_chbmit_chs_info()
+model = load_pretrained_interpolated_bendr(chs_info, n_outputs=2)
+model.eval()
+
+# Simulate a real Phase 1 window: 18 channels, 512 samples (2s @ 256Hz)
+dummy_batch = torch.randn(4, 18, 512)  # batch of 4
+
+with torch.no_grad():
+    output = model(dummy_batch)
+
+print('Output shape:', output.shape)
+print('Output sample:', output[0])
+"
+
+-> result:
+
+    Automatic origin fit: head of radius 90.4 mm
+Creating RawArray with float64 data, n_channels=20, n_times=18
+    Range : 0 ... 17 =      0.000 ...     0.170 secs
+Ready.
+InterpolatedBENDR loaded cleanly: 157142075 params
+Output shape: torch.Size([4, 2])
+Output sample: tensor([-0.0928, -0.1107])
+
+-> clean so going forward with this 
+
+
+5. Write CHB-MIT Dataset class — simpler than LaBraM's, standard PyTorch, no custom repo script to adapt
+
+-> uv run python scripts/bendr_loader.py 
+
+
+6. Fine-tuning loop — plain PyTorch, apply gradient clipping + conservative LR from the start (lessons from LaBraM)
+7. Smoke test → full run → log results
 
 
 **********************************************************************************
