@@ -74,18 +74,9 @@ def main():
     model.to(DEVICE)
 
     # Class-weighted loss for imbalance, same principle as Phase 2's GBM
-    train_labels = np.array([train_dataset[i][1] for i in range(0, len(train_dataset), 100)])  # sampled estimate
-    
-    # pos_weight_value = (train_labels == 0).sum() / max((train_labels == 1).sum(), 1)
-    # pos_weight = torch.tensor([pos_weight_value], device=DEVICE)
-    # print(f"Estimated pos_weight: {pos_weight_value:.1f}")
-
-    # criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    # optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=0.05)
-
-    # Cap pos_weight - 193x is too aggressive and destabilizes training;
-    # cap at a much gentler value, rely more on epochs to learn rare class
-    pos_weight_value = min(pos_weight_value, 10.0)
+    train_labels = np.array([train_dataset[i][1] for i in range(0, len(train_dataset), 100)])
+    pos_weight_value = (train_labels == 0).sum() / max((train_labels == 1).sum(), 1)
+    pos_weight_value = min(pos_weight_value, 10.0)  # cap - 193x was too aggressive
     pos_weight = torch.tensor([pos_weight_value], device=DEVICE)
     print(f"Capped pos_weight: {pos_weight_value:.1f}")
 
