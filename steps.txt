@@ -714,7 +714,19 @@ Output sample: tensor([-0.0928, -0.1107])
 
 
 **********************************************************************************
-PHASE 4 — METADATA FUSION
+PHASE 4 — QUALITATIVE ERROR INSPECTION
+**********************************************************************************
+
+1. For each of the 4 test patients (chb17-20, 20 seizure events total), take each model's predictions and check: was this particular seizure detected (at least one true-positive window during it) or missed entirely?
+2. Build a simple table: seizure # → GBM caught? → LaBraM (epoch 4) caught? → BENDR caught?
+3. Look for patterns: do all three models miss the same seizures (suggesting those are genuinely hard cases — maybe short duration, unusual morphology, or a patient whose seizures look atypical)? Or does each model miss different ones (suggesting they're picking up on different, non-overlapping signal)?
+
+-> uv add joblib
+-> uv add lightgbm
+-> uv run save_gbm_with_predictions.py 
+
+**********************************************************************************
+PHASE 5 — METADATA FUSION
 **********************************************************************************
 
 -> Add available patient metadata (age, seizure history if present in CHB-MIT docs)
@@ -723,7 +735,7 @@ PHASE 4 — METADATA FUSION
 -> Milestone: fusion-failure diagnostic result #1
 
 **********************************************************************************
-PHASE 5 — SCALE TO TUAB
+PHASE 6 — SCALE TO TUAB
 **********************************************************************************
 
 -> Same pipeline (Phases 1–4) applied to TUAB (abnormal classification) or TUEV
@@ -732,14 +744,14 @@ PHASE 5 — SCALE TO TUAB
 -> Milestone: cross-dataset comparison — this is your strongest differentiator
 
 ***********************************************************************************
-PHASE 6 — CALIBRATION  LAYER
+PHASE 7 — CALIBRATION  LAYER
 ***********************************************************************************
 
 -> Confidence calibration audit across both datasets: does model confidence track actual reliability, or is it miscalibrated the way your prior projects found?
 -> Reliability diagrams / ECE (expected calibration error) as a concrete metric to report
 
 ************************************************************************************
-PHASE 7 — FastAPI + Demo UI
+PHASE 8 — FastAPI + Demo UI
 ************************************************************************************
 
 -> FastAPI endpoint: input EEG window → prediction + confidence + fusion-diagnostic flag
@@ -747,7 +759,7 @@ PHASE 7 — FastAPI + Demo UI
 -> Deploy on EC2/Fargate if you want it live for portfolio/outreach links
 
 ************************************************************************************
-Phase 8 — Writeup + Portfolio Integration
+Phase 9 — Writeup + Portfolio Integration
 ************************************************************************************
 
 Research-note style summary (Problem / Tested / Why it matters, matching your other cards)
