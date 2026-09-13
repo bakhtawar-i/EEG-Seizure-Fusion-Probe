@@ -92,3 +92,39 @@ gbm_catches.to_csv("saved_models/gbm_seizure_catches.csv", index=False)
 bendr_catches.to_csv("saved_models/bendr_seizure_catches.csv", index=False)
 labram_catches.to_csv("saved_models/labram_seizure_catches.csv", index=False)
 print("\nSaved detailed catch tables to saved_models/")
+
+
+# Total seizure events in test set: 20
+#    patient       filename  start_sec  end_sec
+# 0    chb17  chb17a_03.edf     2282.0   2372.0
+# 1    chb17  chb17a_04.edf     3025.0   3140.0
+# 2    chb17  chb17b_63.edf     3136.0   3224.0
+# 3    chb18   chb18_29.edf     3477.0   3527.0
+# 4    chb18   chb18_30.edf      541.0    571.0
+# 5    chb18   chb18_31.edf     2087.0   2155.0
+# 6    chb18   chb18_32.edf     1908.0   1963.0
+# 7    chb18   chb18_35.edf     2196.0   2264.0
+# 8    chb18   chb18_36.edf      463.0    509.0
+# 9    chb19   chb19_28.edf      299.0    377.0
+# 10   chb19   chb19_29.edf     2964.0   3041.0
+# 11   chb19   chb19_30.edf     3159.0   3240.0
+# 12   chb20   chb20_12.edf       94.0    123.0
+# 13   chb20   chb20_13.edf     1440.0   1470.0
+# 14   chb20   chb20_13.edf     2498.0   2537.0
+# 15   chb20   chb20_14.edf     1971.0   2009.0
+# 16   chb20   chb20_15.edf      390.0    425.0
+# 17   chb20   chb20_15.edf     1689.0   1738.0
+# 18   chb20   chb20_16.edf     2226.0   2261.0
+# 19   chb20   chb20_68.edf     1393.0   1432.0
+
+# GBM: 16/17 seizure runs caught
+# BENDR: 0/17 seizure runs caught
+# LaBraM: 3/39 seizure runs caught
+
+# === Per-patient seizure run catch counts ===
+# chb17: GBM 0/0, BENDR 0/0, LaBraM 0/0
+# chb18: GBM 5/6, BENDR 0/6, LaBraM 0/10
+# chb19: GBM 3/3, BENDR 0/3, LaBraM 3/13
+# chb20: GBM 8/8, BENDR 0/8, LaBraM 0/16
+
+# Saved detailed catch tables to saved_models/
