@@ -723,8 +723,8 @@ PHASE 4 — QUALITATIVE ERROR INSPECTION
 
 -> uv add joblib
 -> uv add lightgbm
--> uv run save_gbm_with_predictions.py 
-
+-> uv run python scripts/save_gbm_with_predictions.py 
+-> uv run python scripts/error_inspection.py
 **********************************************************************************
 PHASE 5 — METADATA FUSION
 **********************************************************************************
