@@ -15,10 +15,13 @@ Seizure detection pipeline on the CHB-MIT scalp EEG dataset (21 of 22 patients u
 | GBM baseline (126 features) | 0.870 | 0.150 | spectral + time-domain only |
 | GBM + SMOTE (0.1/0.3) | 0.880-0.882 | 0.157-0.167 | shifts sensitivity/FA tradeoff, doesn't raise AUC-PR ceiling |
 | **GBM (220 features, selected baseline)** | **0.874** | **0.174** | adds wavelet + cross-channel correlation features |
-| LaBraM (peak, epoch 4/10) | 0.890 | 0.190 | best foundation-model result; overfits after |
+| LaBraM (peak, epoch 4/10, full fine-tune) | 0.890 | 0.190 | best raw numbers; overfits sharply after |
 | LaBraM (final, epoch 9/10) | 0.636 | 0.066 | shown for contrast — overfitting |
+| BENDR (frozen backbone, linear head) | 0.804 | 0.028 | stable training, but degenerate decision boundary (no usable threshold between 0.05 and 0.10+) |
 
 Full details: [`docs/phase2_results.md`](docs/phase2_results.md), [`docs/phase3_results.md`](docs/phase3_results.md)
+
+**Key takeaway**: both foundation models required real methodological intervention to train stably or usefully at all (LaBraM: gradient clipping to prevent NaN divergence; BENDR: freezing the backbone entirely after full fine-tuning diverged). BENDR's case is the sharper finding — a reasonable-looking ROC-AUC (0.804) conceals a model with no practically usable decision threshold, a concrete demonstration of the gap between ranking-quality metrics and decision usability that motivates this project.
 
 ## Pipeline
 
@@ -32,9 +35,10 @@ Full details: [`docs/phase2_results.md`](docs/phase2_results.md), [`docs/phase3_
 - LightGBM, evaluated on held-out patients
 - **Key finding**: richer features improved AUC-PR more than class-imbalance techniques (SMOTE, class weighting)
 
-### Phase 3 — Foundation Model Benchmarking (in progress)
-- **LaBraM**: complete. Separate preprocessing (0.1-75Hz filter, 50Hz notch, 200Hz resample, 16-channel subset, 10s windows). Peak result exceeds GBM baseline at epoch 4, then overfits.
-- **BENDR**: planned — reported strongest performer on epilepsy detection in prior literature, second comparison point.
+### Phase 3 — Foundation Model Benchmarking (complete)
+- **LaBraM**: complete. Separate preprocessing (0.1-75Hz filter, 50Hz notch, 200Hz resample, 16-channel subset, 10s windows). Full fine-tune (5.8M params); fixed an early NaN-loss divergence via gradient clipping + reduced learning rate. Peak result exceeds GBM baseline at epoch 4 (AUC-ROC 0.890, AUC-PR 0.190), then overfits sharply (AUC-PR falls to 0.066 by epoch 9).
+- **BENDR**: complete. Used Phase 1's original windowed data directly (18ch, 512 samples, 256Hz) via braindecode's `InterpolatedBENDR`, no separate preprocessing needed. Full fine-tuning diverged to NaN despite gradient clipping and AMP/GradScaler; resolved by freezing the pretrained backbone and training only the linear head (1,538 of 157M params), per braindecode's documented transfer-learning guidance. Result: stable training, ROC-AUC 0.804, but a threshold sweep revealed a degenerate decision boundary — no usable operating threshold exists between 0.05 (predicts ~everything positive) and 0.10+ (predicts ~everything negative), despite the reasonable-looking AUC. A concrete instance of the ranking-quality vs. decision-usability gap this project is built to surface.
+- **NeuroGPT**: out of scope for this iteration — two of the three originally identified foundation models were benchmarked, not a full three-way replication.
 
 ## Repo Structure
 
@@ -53,4 +57,4 @@ docs/ # phase results, comparison tables
 ## Status
 - ✅ Phase 1 (preprocessing) complete
 - ✅ Phase 2 (GBM baseline) complete
-- 🔄 Phase 3 (foundation model fine-tuning) — LaBraM complete, BENDR planned
+- ✅ Phase 3 (foundation model fine-tuning) complete — LaBraM and BENDR benchmarked; NeuroGPT out of scope for this iteration
